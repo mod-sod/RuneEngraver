@@ -19,6 +19,7 @@ local PREFIX = "RUNE"
 --- Sends one protocol body to the server (self-whisper addon message).
 ---@param body string
 NS.RE_Send = function(body)
+    if NS.RE_Debug then NS.RE_Print("send -> " .. body) end
     SendAddonMessage(PREFIX, body, "WHISPER", UnitName("player"))
 end
 

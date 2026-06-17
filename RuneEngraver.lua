@@ -114,7 +114,12 @@ end
 -- ============================================================
 SLASH_RUNEENGRAVER1 = "/rune"
 SLASH_RUNEENGRAVER2 = "/runeengraver"
-SlashCmdList["RUNEENGRAVER"] = function()
+SlashCmdList["RUNEENGRAVER"] = function(msg)
+    if msg == "debug" then
+        NS.RE_Debug = not NS.RE_Debug
+        NS.RE_Print("debug " .. (NS.RE_Debug and "on" or "off"))
+        return
+    end
     if NS.RE_TogglePanel then NS.RE_TogglePanel() end
 end
 

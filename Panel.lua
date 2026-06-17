@@ -18,8 +18,10 @@ local selectedSlot = nil   ---@type number|nil  currently-browsed slot index
 local panel = CreateFrame("Frame", "RuneEngraverFrame", UIParent)
 panel:SetSize(470, 360)
 panel:SetPoint("CENTER")
-panel:SetFrameStrata("MEDIUM")
-panel:SetToplevel(true)
+-- DIALOG strata floats above the (MEDIUM) Character Sheet. Note: do NOT use
+-- SetToplevel here — it raises the panel above its own lazily-created child rows
+-- (the rune buttons), so they'd render under the backdrop and stop taking clicks.
+panel:SetFrameStrata("DIALOG")
 panel:EnableMouse(true)
 panel:SetMovable(true)
 panel:RegisterForDrag("LeftButton")
@@ -57,6 +59,10 @@ statusFS:SetJustifyH("LEFT")
 local function CreateRow(width)
     local b = CreateFrame("Button", nil, panel)
     b:SetSize(width, 22)
+    -- Sit a few levels above the panel so rows (incl. lazily-created rune rows)
+    -- always render over the backdrop and receive clicks.
+    b:SetFrameLevel(panel:GetFrameLevel() + 5)
+    b:RegisterForClicks("LeftButtonUp")
     b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetSize(18, 18)
