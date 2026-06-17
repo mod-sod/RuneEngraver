@@ -1,0 +1,12 @@
+# Compiled Lua
+luac.out
+
+# Archives / build output
+*.zip
+*.tar.gz
+
+# Editor / local-only
+/.vscode
+.luarc.json
+CLAUDE.md
+*.warperia

@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: RuneEngraver
+## Notes: Engrave runes from a Character Sheet panel (UI for mod-rune-engraving).
+## Author: BennyBroseph
+## Version: 0.1
+## SavedVariables: RuneEngraver_SavedVars
+
+RuneEngraver.lua
+Comms.lua
+Panel.lua
