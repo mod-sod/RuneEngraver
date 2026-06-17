@@ -39,8 +39,6 @@ contract documented on both sides (the engine repo has the server half).
 
 ## Development
 
-- **Conventions / API**: see `CLAUDE.md`. Verify every WoW API against the
-  3.3.5a reference (don't trust memory).
 - **Tests** (pure protocol logic, no client): `luajit spec\run.lua` →
   `N passed, 0 failed`. The harness is a dependency-free busted-style runner;
   CI runs the same on every `.lua` change.
