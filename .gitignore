@@ -9,4 +9,5 @@ luac.out
 /.vscode
 .luarc.json
 CLAUDE.md
+.claude/
 *.warperia
