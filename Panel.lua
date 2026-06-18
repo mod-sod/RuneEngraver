@@ -14,12 +14,16 @@ local NS = RuneEngraverNS
 local SLOT_MAX   = 11
 local ICON_PATH  = "Interface\\Icons\\"
 local PANEL_W    = 280
-local ICON_SIZE  = 37          -- same as a paper-doll equipment slot icon
-local BORDER_SIZE = 64         -- UI-Quickslot2 frame size for a 37px icon
-local ROW_HEIGHT = ICON_SIZE + 3   -- a row holds one equipment-slot-sized icon
+local ICON_SIZE  = 39          -- $parentIconTexture size in LargeItemButtonTemplate
+local ROW_HEIGHT = ICON_SIZE + 3   -- a rune row holds one quest-reward-style icon
+local HEADER_HEIGHT = math.floor(ROW_HEIGHT / 2)  -- slot headers are half as tall
 local MAX_ROWS   = 30          -- pool cap; only as many as fit are shown
 local PAD        = 12
 local RUNE_ICON  = "inv_misc_rune_06"
+
+-- The parchment name-plate that the stock quest-reward widget
+-- (LargeItemButtonTemplate) sits beside its icon. We stretch it to the row width.
+local NAMEPLATE_TEX = "Interface\\QuestFrame\\UI-QuestItemNameFrame"
 
 -- The Character Sheet's frame is taller than its visible (non-transparent) art,
 -- so matching its raw height overshoots. Trim the top and bottom independently
@@ -127,7 +131,7 @@ list:SetBackdrop({
 --                      these both move and stretch it.
 --   PARCHMENT_CROP   — sub-rectangle of the texture shown, 0..1 (pan/zoom).
 local PARCHMENT_TEX   = "Interface\\Spellbook\\UI-SpellbookPanel-TopLeft"
-local PARCHMENT_COLOR = { 0.5, 0.36, 0.22 }   -- dark brown
+local PARCHMENT_COLOR = { 0.65, 0.46, 0.28 }   -- dark brown
 local PARCHMENT_EDGE  = { left = 0, top = 0, right = 0, bottom = 0 }
 local PARCHMENT_CROP  = { left = 0.1, right = 1, top = 0.31, bottom = 1 }
 
@@ -170,7 +174,8 @@ local function GetRow(i)
     if rows[i] then return rows[i] end
     local row = CreateFrame("Button", nil, list)
     row:SetHeight(ROW_HEIGHT)
-    row:SetPoint("TOPLEFT", scroll, "TOPLEFT", 0, -(i - 1) * ROW_HEIGHT)
+    -- Position (y offset) and height are set per-render in RenderList so headers
+    -- and rune rows can stack at their own heights.
     -- Sit a few levels above the list so rows render over the parchment and
     -- keep receiving clicks.
     row:SetFrameLevel(list:GetFrameLevel() + 5)
@@ -200,27 +205,45 @@ local function GetRow(i)
     row.toggle = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     row.toggle:SetPoint("LEFT", row, "LEFT", 6, 0)
 
+    -- Rune-row visuals mirror the stock quest-reward widget
+    -- (LargeItemButtonTemplate): a bare icon with a parchment name-plate beside
+    -- it. No metallic/quality border — runes carry no item rarity.
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(ICON_SIZE, ICON_SIZE)
     row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
-    -- Full icon (no trim) so it fills to the frame, like an equipment-slot item.
 
-    -- The metallic item border action bars / equipment slots use. UI-Quickslot2
-    -- is ~1.7x the icon with transparent margins, so it overhangs and frames it.
-    row.border = row:CreateTexture(nil, "OVERLAY")
-    row.border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
-    row.border:SetSize(BORDER_SIZE, BORDER_SIZE)
-    row.border:SetPoint("CENTER", row.icon, "CENTER", 0, 0)
+    -- Name-plate: the UI-QuestItemNameFrame art, stretched from the icon to the
+    -- scroll's right edge. The 128x64 texture has ~11px fully-transparent margins
+    -- on every side (visible parchment spans x 11..116, y 11..52), so we crop the
+    -- left/right padding with SetTexCoord — otherwise the margins scale with the
+    -- quad and the parchment never reaches the edges. Native 64px height keeps the
+    -- vertical body un-squished (its transparent top/bottom overhang the row).
+    row.plate = row:CreateTexture(nil, "BACKGROUND")
+    row.plate:SetTexture(NAMEPLATE_TEX)
+    row.plate:SetTexCoord(11 / 128, 117 / 128, 0, 1)
+    row.plate:SetHeight(64)
+    row.plate:SetPoint("LEFT", row.icon, "RIGHT", -2, 0)
+    row.plate:SetPoint("RIGHT", row, "RIGHT", 0, 0)
 
-    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+    -- Name sits inside the plate (template anchors it LEFT at +15); RIGHT kept in
+    -- the plate so long names stay on the parchment.
+    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.label:SetPoint("LEFT", row.plate, "LEFT", 15, 0)
+    row.label:SetPoint("RIGHT", row.plate, "RIGHT", -10, 0)
     row.label:SetJustifyH("LEFT")
 
     row:SetScript("OnClick", OnRowClick)
     row:SetScript("OnEnter", function(self)
         if self.kind ~= "rune" or not self.runeName then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self.runeName)
+        -- The rune teaches a spell the client already knows (our DBC patch injects
+        -- it), so show that spell's full tooltip — like the quest-reward widget
+        -- shows a spell reward. Fall back to the bare name if the link is empty.
+        if self.spellId and self.spellId > 0 then
+            GameTooltip:SetHyperlink("spell:" .. self.spellId)
+        else
+            GameTooltip:SetText(self.runeName)
+        end
         if self.locked then GameTooltip:AddLine("Undiscovered", 1, 0.4, 0.4) end
         GameTooltip:Show()
     end)
@@ -284,7 +307,7 @@ local function RenderRow(row, entry)
         row.hdr:Show()
         row.sel:Hide()
         row.icon:Hide()
-        row.border:Hide()
+        row.plate:Hide()
         row.toggle:Show()
         row.toggle:SetText(collapsed[entry.index] and "+" or " -")
         row.label:ClearAllPoints()
@@ -297,18 +320,19 @@ local function RenderRow(row, entry)
         end
         row.label:SetText(text)
         row.label:SetTextColor(1, 0.82, 0)  -- gold, like the default slot headers
-        row.runeId, row.runeName, row.locked, row.isCurrent = nil, nil, false, false
+        row.runeId, row.runeName, row.spellId = nil, nil, nil
+        row.locked, row.isCurrent = false, false
     else
         local slot, r = entry.slot, entry.rune
         row.hdr:Hide()
         row.toggle:Hide()
         row.icon:Show()
-        row.border:Show()
+        row.plate:Show()
         row.icon:SetTexture(ICON_PATH .. r.icon)
         row.icon:SetDesaturated(r.locked)
         row.label:ClearAllPoints()
-        row.label:SetPoint("LEFT", row.icon, "RIGHT", 14, 0)
-        row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.label:SetPoint("LEFT", row.plate, "LEFT", 15, 0)
+        row.label:SetPoint("RIGHT", row.plate, "RIGHT", -10, 0)
         row.label:SetJustifyH("LEFT")
         local isCurrent = r.id == slot.current and slot.current ~= 0
         if isCurrent then row.sel:Show() else row.sel:Hide() end
@@ -320,7 +344,7 @@ local function RenderRow(row, entry)
         end
         row.label:SetText(text)
         row.label:SetTextColor(1, 1, 1)
-        row.runeId, row.runeName  = r.id, r.name
+        row.runeId, row.runeName, row.spellId = r.id, r.name, r.spellId
         row.locked, row.isCurrent = r.locked, isCurrent
     end
 end
@@ -328,22 +352,37 @@ end
 RenderList = function()
     if not panel:IsShown() then return end
     local display = BuildDisplay()
-    local numRows = math.floor(scroll:GetHeight() / ROW_HEIGHT)
+    local scrollH = scroll:GetHeight()
+
+    -- The scrollbar still steps in whole ROW_HEIGHT units (one display entry per
+    -- step); offset is the entry index to start at. numRows is the worst case
+    -- (all full-height rune rows) so the bar always lets us reach the last entry.
+    local numRows = math.floor(scrollH / ROW_HEIGHT)
     if numRows < 1 then numRows = 1 end
     if numRows > MAX_ROWS then numRows = MAX_ROWS end
 
     FauxScrollFrame_Update(scroll, #display, numRows, ROW_HEIGHT)
     local offset = FauxScrollFrame_GetOffset(scroll)
 
-    for i = 1, MAX_ROWS do
-        local entry = i <= numRows and display[i + offset] or nil
-        if entry then
-            local row = GetRow(i)
-            RenderRow(row, entry)
-            row:Show()
-        elseif rows[i] then
-            rows[i]:Hide()
-        end
+    -- Stack the visible entries top-down, each at its own height (headers are
+    -- half as tall as rune rows), until the next one wouldn't fit.
+    local y, used = 0, 0
+    for di = offset + 1, #display do
+        local entry = display[di]
+        local h = entry.kind == "header" and HEADER_HEIGHT or ROW_HEIGHT
+        if used >= MAX_ROWS then break end
+        if used > 0 and y + h > scrollH then break end
+        used = used + 1
+        local row = GetRow(used)
+        RenderRow(row, entry)
+        row:SetHeight(h)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", scroll, "TOPLEFT", 0, -y)
+        row:Show()
+        y = y + h
+    end
+    for i = used + 1, MAX_ROWS do
+        if rows[i] then rows[i]:Hide() end
     end
 end
 NS.RE_RenderRunes = RenderList  -- kept under the legacy name other code calls

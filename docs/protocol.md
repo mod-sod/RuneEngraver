@@ -39,7 +39,7 @@ between `BEGIN` and `END`, then renders.
 |---|---|---|
 | `BEGIN~<prereqMet>~<level>` | `prereqMet` = 0/1 (learned Engraving), `level` = character level | start a state push |
 | `SLOT~<slot>~<name>~<minLevel>~<current>` | `name` e.g. "Chest"; `minLevel` to unlock; `current` = engraved rune id (0 = none) | one per slot |
-| `RUNE~<slot>~<runeId>~<icon>~<locked>~<name>` | `icon` = inventory-icon name (→ `Interface\Icons\<icon>`); `locked` = 0/1 (1 = gated rune not yet discovered, greyed in the panel); `name` is **last** so it may contain `~` | one per class/slot-legal rune (locked + unlocked) |
+| `RUNE~<slot>~<runeId>~<icon>~<locked>~<spellId>~<name>` | `icon` = inventory-icon name (→ `Interface\Icons\<icon>`); `locked` = 0/1 (1 = gated rune not yet discovered, greyed in the panel); `spellId` = the spell the rune teaches (the panel shows its tooltip via `spell:<spellId>`, 0 = none); `name` is **last** so it may contain `~` | one per class/slot-legal rune (locked + unlocked) |
 | `MSG~<text>` | feedback (engrave result / failure reason) | optional, inside the block |
 | `END` | — | push complete → render |
 
