@@ -24,10 +24,15 @@ have `Interface/AddOns/RuneEngraver/RuneEngraver.toc`, then restart the client.
 ## Use
 
 - Open your **Character Sheet** (default `C`) and click the rune button at the
-  top-right (just left of the close button), or type `/rune`.
-- Pick a slot on the left, then click a rune on the right to engrave it. Locked
-  slots show `(unlocks at N)`; the engraved rune is highlighted; **Remove rune**
-  clears the slot.
+  top-right (just left of the close button), or type `/rune`. The panel docks to
+  the right of the sheet and matches its height.
+- Runes are grouped under collapsible equipment-slot headers; use the **search**
+  box to filter by name. Slots below your level show `(unlocks at N)` and
+  undiscovered runes are greyed out.
+- **Left-click** a rune to engrave it; **right-click** the engraved rune to clear
+  the slot. The footer shows how many runes you've collected of the total.
+- Each engravable equipment slot on the paper doll is badged with the engraved
+  rune's icon (or a faint rune marker when empty).
 
 ## How it works
 

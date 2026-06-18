@@ -89,7 +89,7 @@ do
     btn:SetPoint("RIGHT", CharacterFrameCloseButton, "LEFT", 4, 0)
 
     local icon = btn:CreateTexture(nil, "ARTWORK")
-    icon:SetTexture("Interface\\Icons\\Spell_Arcane_StudentOfMagic")
+    icon:SetTexture("Interface\\Icons\\inv_misc_rune_06")
     icon:SetAllPoints(btn)
     icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) -- trim the default icon border
 

@@ -39,7 +39,7 @@ between `BEGIN` and `END`, then renders.
 |---|---|---|
 | `BEGIN~<prereqMet>~<level>` | `prereqMet` = 0/1 (learned Engraving), `level` = character level | start a state push |
 | `SLOT~<slot>~<name>~<minLevel>~<current>` | `name` e.g. "Chest"; `minLevel` to unlock; `current` = engraved rune id (0 = none) | one per slot |
-| `RUNE~<slot>~<runeId>~<icon>~<name>` | `icon` = inventory-icon name (→ `Interface\Icons\<icon>`); `name` is **last** so it may contain `~` | one per engravable rune in the slot |
+| `RUNE~<slot>~<runeId>~<icon>~<locked>~<name>` | `icon` = inventory-icon name (→ `Interface\Icons\<icon>`); `locked` = 0/1 (1 = gated rune not yet discovered, greyed in the panel); `name` is **last** so it may contain `~` | one per class/slot-legal rune (locked + unlocked) |
 | `MSG~<text>` | feedback (engrave result / failure reason) | optional, inside the block |
 | `END` | — | push complete → render |
 
@@ -50,5 +50,6 @@ After an `ENG`/`DEL`, the server re-sends the whole `BEGIN…END` block with a
 
 `Comms.lua` keeps the parse pure (`RE_NewState` / `RE_HandleLine`) so it's unit-
 tested in `spec/comms_spec.lua` without a live client. `RUNE` lines are parsed by
-splitting off the first three fields and keeping the remainder as the name (so a
-name containing `~` survives); other lines split on every `~`.
+splitting off the first four fields (slot, runeId, icon, locked) and keeping the
+remainder as the name (so a name containing `~` survives); other lines split on
+every `~`.

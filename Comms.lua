@@ -76,17 +76,19 @@ NS.RE_HandleLine = function(state, body)
         end
 
     elseif kind == "RUNE" and state.model then
-        -- slot ~ runeId ~ icon ~ name  (name last, so it may contain "~")
-        local slotStr, r1  = NS.RE_SplitOnce(rest, "~")
-        local idStr,   r2  = NS.RE_SplitOnce(r1, "~")
-        local icon,    name = NS.RE_SplitOnce(r2, "~")
+        -- slot ~ runeId ~ icon ~ locked ~ name  (name last, so it may contain "~")
+        local slotStr, r1   = NS.RE_SplitOnce(rest, "~")
+        local idStr,   r2   = NS.RE_SplitOnce(r1, "~")
+        local icon,    r3   = NS.RE_SplitOnce(r2, "~")
+        local lockedStr, name = NS.RE_SplitOnce(r3, "~")
         local idx  = tonumber(slotStr)
         local slot = idx and state.model.slots[idx]
         if slot then
             slot.runes[#slot.runes + 1] = {
-                id   = tonumber(idStr) or 0,
-                icon = icon ~= "" and icon or "inv_misc_questionmark",
-                name = name or "",
+                id     = tonumber(idStr) or 0,
+                icon   = icon ~= "" and icon or "inv_misc_questionmark",
+                locked = lockedStr == "1",
+                name   = name or "",
             }
         end
 
