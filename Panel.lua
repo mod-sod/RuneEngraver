@@ -14,10 +14,18 @@ local NS = RuneEngraverNS
 local SLOT_MAX   = 11
 local ICON_PATH  = "Interface\\Icons\\"
 local PANEL_W    = 280
-local ROW_HEIGHT = 22
+local ICON_SIZE  = 37          -- same as a paper-doll equipment slot icon
+local BORDER_SIZE = 64         -- UI-Quickslot2 frame size for a 37px icon
+local ROW_HEIGHT = ICON_SIZE + 3   -- a row holds one equipment-slot-sized icon
 local MAX_ROWS   = 30          -- pool cap; only as many as fit are shown
 local PAD        = 12
 local RUNE_ICON  = "inv_misc_rune_06"
+
+-- The Character Sheet's frame is taller than its visible (non-transparent) art,
+-- so matching its raw height overshoots. Trim the top and bottom independently
+-- to line the panel up with the sheet's visible edges.
+local FRAME_INSET_TOP    = 10
+local FRAME_INSET_BOTTOM = 74
 
 -- model slot index → paper-doll equipment button. "Ring" is a single engraving
 -- slot, so only Finger0 is badged (Finger1 is intentionally left unbadged).
@@ -42,7 +50,7 @@ panel:SetWidth(PANEL_W)
 -- Dock flush against the Character Sheet's right edge (the negative x tucks the
 -- panel under the sheet's right border art); height is grabbed at runtime in
 -- OnShow so it always matches the live frame (see below).
-panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -33, 0)
+panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -37, -FRAME_INSET_TOP)
 -- DIALOG strata floats above the (MEDIUM) Character Sheet. Note: do NOT use
 -- SetToplevel here — it raises the panel above its own lazily-created child rows,
 -- so they'd render under the backdrop and stop taking clicks.
@@ -56,7 +64,6 @@ panel:SetBackdrop({
     insets = { left = 4, right = 4, top = 4, bottom = 4 },
 })
 panel:SetBackdropColor(0.05, 0.04, 0.03, 0.95)
-panel:SetBackdropBorderColor(0.4, 0.3, 0.2, 1)
 panel:Hide()
 
 -- ── Search bar ───────────────────────────────────────────────────────────────
@@ -66,8 +73,15 @@ search:SetHeight(20)
 search:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + 6, -14)
 search:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD - 2, -14)
 
+-- Magnifier icon (SoD's search box uses this), inset the text past it.
+local searchIcon = search:CreateTexture(nil, "OVERLAY")
+searchIcon:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+searchIcon:SetSize(14, 14)
+searchIcon:SetPoint("LEFT", search, "LEFT", 2, -1)
+search:SetTextInsets(18, 0, 0, 0)
+
 local searchHint = search:CreateFontString(nil, "ARTWORK", "GameFontDisable")
-searchHint:SetPoint("LEFT", search, "LEFT", 2, 0)
+searchHint:SetPoint("LEFT", search, "LEFT", 18, 0)
 searchHint:SetText("Search")
 
 search:SetScript("OnTextChanged", function(self)
@@ -90,20 +104,47 @@ footerFS:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", PAD + 4, 14)
 footerFS:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PAD - 4, 14)
 footerFS:SetJustifyH("LEFT")
 
--- ── Scroll frame ─────────────────────────────────────────────────────────────
-local scroll = CreateFrame("ScrollFrame", "RuneEngraverScroll", panel, "FauxScrollFrameTemplate")
-scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -40)
-scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PAD - 22, 46)
+-- ── Rune list ────────────────────────────────────────────────────────────────
+-- A nested, inset section with its own dark-brown parchment background, distinct
+-- from the outer frame. The scroll frame and its rows live inside it.
+local list = CreateFrame("Frame", "RuneEngraverList", panel)
+list:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -38)
+list:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PAD, 44)
+-- Border only; the parchment is a single stretched fill below.
+list:SetBackdrop({
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+})
+
+-- Parchment fill: one stretched piece of the spellbook page background. All the
+-- knobs are here so you can move/stretch and pan/zoom it freely:
+--   PARCHMENT_TEX    — source texture (the spellbook panel quadrants)
+--   PARCHMENT_COLOR  — {r,g,b} tint (1,1,1 = natural)
+--   PARCHMENT_EDGE   — px offsets from each list edge; the texture is anchored
+--                      TOPLEFT (+left,+top) and BOTTOMRIGHT (+right,+bottom).
+--                      Positive grows the quad up/right, negative down/left — so
+--                      these both move and stretch it.
+--   PARCHMENT_CROP   — sub-rectangle of the texture shown, 0..1 (pan/zoom).
+local PARCHMENT_TEX   = "Interface\\Spellbook\\UI-SpellbookPanel-TopLeft"
+local PARCHMENT_COLOR = { 0.5, 0.36, 0.22 }   -- dark brown
+local PARCHMENT_EDGE  = { left = 0, top = 0, right = 0, bottom = 0 }
+local PARCHMENT_CROP  = { left = 0.1, right = 1, top = 0.31, bottom = 1 }
+
+local parchment = list:CreateTexture(nil, "BACKGROUND")
+parchment:SetTexture(PARCHMENT_TEX)
+parchment:SetVertexColor(PARCHMENT_COLOR[1], PARCHMENT_COLOR[2], PARCHMENT_COLOR[3])
+parchment:SetTexCoord(PARCHMENT_CROP.left, PARCHMENT_CROP.right,
+                      PARCHMENT_CROP.top, PARCHMENT_CROP.bottom)
+parchment:SetPoint("TOPLEFT", list, "TOPLEFT", PARCHMENT_EDGE.left, PARCHMENT_EDGE.top)
+parchment:SetPoint("BOTTOMRIGHT", list, "BOTTOMRIGHT", PARCHMENT_EDGE.right, PARCHMENT_EDGE.bottom)
+
+local scroll = CreateFrame("ScrollFrame", "RuneEngraverScroll", list, "FauxScrollFrameTemplate")
+scroll:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -8)
+scroll:SetPoint("BOTTOMRIGHT", list, "BOTTOMRIGHT", -26, 8)
 scroll:SetScript("OnVerticalScroll", function(self, offset)
     FauxScrollFrame_OnVerticalScroll(self, offset, ROW_HEIGHT, RenderList)
 end)
-
--- Dark-brown parchment behind the list (rows sit a few frame levels above it).
-local listBg = scroll:CreateTexture(nil, "BACKGROUND")
-listBg:SetTexture("Interface\\QuestFrame\\QuestBackground")
-listBg:SetPoint("TOPLEFT", scroll, "TOPLEFT", -2, 2)
-listBg:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 2, -2)
-listBg:SetVertexColor(0.45, 0.3, 0.18)
 
 -- ── Row pool ─────────────────────────────────────────────────────────────────
 local function OnRowClick(self, button)
@@ -119,27 +160,59 @@ local function OnRowClick(self, button)
     end
 end
 
+-- Stock 3.3.5a textures (confirmed against the Interface 30300 source):
+--   header bar  — the grey-stone channel-button background (FriendsFrame channels)
+--   highlight   — the yellow quest-log title highlight
+local HEADER_TEX  = "Interface\\AuctionFrame\\UI-AuctionFrame-FilterBg"
+local HILIGHT_TEX = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
+
 local function GetRow(i)
     if rows[i] then return rows[i] end
-    local row = CreateFrame("Button", nil, panel)
+    local row = CreateFrame("Button", nil, list)
     row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", scroll, "TOPLEFT", 0, -(i - 1) * ROW_HEIGHT)
-    -- Sit a few levels above the panel so rows render over the backdrop and
+    -- Sit a few levels above the list so rows render over the parchment and
     -- keep receiving clicks.
-    row:SetFrameLevel(panel:GetFrameLevel() + 5)
+    row:SetFrameLevel(list:GetFrameLevel() + 5)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
 
-    row.toggle = row:CreateTexture(nil, "ARTWORK")
-    row.toggle:SetSize(16, 16)
-    row.toggle:SetPoint("LEFT", row, "LEFT", 2, 0)
+    -- Hover highlight on the special HIGHLIGHT layer (3.3.5a auto-shows it on
+    -- mouseover); a dimmer always-on copy marks the engraved rune.
+    row.hl = row:CreateTexture(nil, "HIGHLIGHT")
+    row.hl:SetTexture(HILIGHT_TEX)
+    row.hl:SetBlendMode("ADD")
+    row.hl:SetAllPoints(row)
+
+    row.sel = row:CreateTexture(nil, "ARTWORK")
+    row.sel:SetTexture(HILIGHT_TEX)
+    row.sel:SetBlendMode("ADD")
+    row.sel:SetAllPoints(row)
+    row.sel:SetAlpha(0.4)
+    row.sel:Hide()
+
+    -- Header background (channel-button texture, header rows only).
+    row.hdr = row:CreateTexture(nil, "BORDER")
+    row.hdr:SetTexture(HEADER_TEX)
+    row.hdr:SetTexCoord(0, 0.53125, 0, 0.625)
+    row.hdr:SetAllPoints(row)
+
+    -- Collapse +/- as a text glyph (no button background), header rows only.
+    row.toggle = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    row.toggle:SetPoint("LEFT", row, "LEFT", 6, 0)
 
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(18, 18)
-    row.icon:SetPoint("LEFT", row, "LEFT", 10, 0)  -- indented under its header
-    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.icon:SetSize(ICON_SIZE, ICON_SIZE)
+    row.icon:SetPoint("LEFT", row, "LEFT", 4, 0)
+    -- Full icon (no trim) so it fills to the frame, like an equipment-slot item.
 
-    row.label = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    -- The metallic item border action bars / equipment slots use. UI-Quickslot2
+    -- is ~1.7x the icon with transparent margins, so it overhangs and frames it.
+    row.border = row:CreateTexture(nil, "OVERLAY")
+    row.border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+    row.border:SetSize(BORDER_SIZE, BORDER_SIZE)
+    row.border:SetPoint("CENTER", row.icon, "CENTER", 0, 0)
+
+    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     row.label:SetJustifyH("LEFT")
 
@@ -208,12 +281,15 @@ local function RenderRow(row, entry)
 
     if entry.kind == "header" then
         local slot = entry.slot
+        row.hdr:Show()
+        row.sel:Hide()
         row.icon:Hide()
+        row.border:Hide()
         row.toggle:Show()
-        row.toggle:SetTexture(collapsed[entry.index]
-            and "Interface\\Buttons\\UI-PlusButton-Up"
-            or  "Interface\\Buttons\\UI-MinusButton-Up")
-        row.label:SetPoint("LEFT", row.toggle, "RIGHT", 4, 0)
+        row.toggle:SetText(collapsed[entry.index] and "+" or " -")
+        row.label:ClearAllPoints()
+        row.label:SetPoint("CENTER", row, "CENTER", 0, 0)
+        row.label:SetJustifyH("CENTER")
         local level = NS.model and NS.model.level or 0
         local text  = slot.name
         if slot.minLevel > level then
@@ -224,12 +300,18 @@ local function RenderRow(row, entry)
         row.runeId, row.runeName, row.locked, row.isCurrent = nil, nil, false, false
     else
         local slot, r = entry.slot, entry.rune
+        row.hdr:Hide()
         row.toggle:Hide()
         row.icon:Show()
+        row.border:Show()
         row.icon:SetTexture(ICON_PATH .. r.icon)
         row.icon:SetDesaturated(r.locked)
-        row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+        row.label:ClearAllPoints()
+        row.label:SetPoint("LEFT", row.icon, "RIGHT", 14, 0)
+        row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+        row.label:SetJustifyH("LEFT")
         local isCurrent = r.id == slot.current and slot.current ~= 0
+        if isCurrent then row.sel:Show() else row.sel:Hide() end
         local text = r.name
         if r.locked then
             text = "|cff808080" .. r.name .. "|r"
@@ -348,9 +430,8 @@ NS.RE_TogglePanel = function()
 end
 
 panel:SetScript("OnShow", function(self)
-    -- Match the Character Sheet's height at runtime, minus its bottom tab strip.
-    local tabH = CharacterFrameTab1 and CharacterFrameTab1:GetHeight() or 0
-    self:SetHeight(CharacterFrame:GetHeight() - tabH)
+    -- Match the Character Sheet's height at runtime, trimmed to its visible art.
+    self:SetHeight(CharacterFrame:GetHeight() - FRAME_INSET_TOP - FRAME_INSET_BOTTOM)
     RenderList()
     UpdateFooter()
 end)
