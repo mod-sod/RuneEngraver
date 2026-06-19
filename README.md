@@ -2,12 +2,17 @@
 
 A World of Warcraft **3.3.5a** (WotLK) addon that lets you engrave runes from an
 in-game panel, opened by a button on the **Character Sheet**. It's the client UI
-for the server-side [`mod-rune-engraving`](https://github.com/) engine — the two
-talk over a small addon-message protocol and otherwise know nothing about each
-other.
+for the server-side
+[`mod-rune-engraving`](https://github.com/bennybroseph/mod-rune-engraving) engine —
+the two talk over a small addon-message protocol and otherwise know nothing about
+each other.
 
 The server-side gossip **Rune Engraver** NPC still works without this addon; the
 panel is just a nicer front-end onto the same engine.
+
+> **Just want to play?** The [**SoD installer**](https://github.com/bennybroseph/sod-installer)
+> drops this addon into your client and sets up the matching server modules in one
+> command. The manual install below is for doing it by hand.
 
 ## Requirements
 
