@@ -19,7 +19,6 @@ local ROW_HEIGHT = ICON_SIZE + 3   -- a rune row holds one quest-reward-style ic
 local HEADER_HEIGHT = math.floor(ROW_HEIGHT / 2)  -- slot headers are half as tall
 local MAX_ROWS   = 30          -- pool cap; only as many as fit are shown
 local PAD        = 12
-local RUNE_ICON  = "inv_misc_rune_06"
 
 -- The parchment name-plate that the stock quest-reward widget
 -- (LargeItemButtonTemplate) sits beside its icon. We stretch it to the row width.
@@ -249,6 +248,9 @@ local function GetRow(i)
     end)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    -- ElvUI: flatten the parchment/stone row art (no-op without ElvUI).
+    if NS.RE_SkinRow then NS.RE_SkinRow(row) end
+
     rows[i] = row
     return row
 end
@@ -405,7 +407,46 @@ local function UpdateFooter()
 end
 
 -- ── Paper-doll badges ────────────────────────────────────────────────────────
-local badges = {}
+-- A small slot-corner badge per engravable equipment slot: a mini "rune slot"
+-- whose background matches the active skin's equipment slots (ElvUI's flat
+-- template, else a Blizzard-style recessed slot). The rune icon shows only when a
+-- rune is engraved; an empty engravable slot shows just the background.
+local badges     = {}
+local BADGE_SIZE = 14
+
+-- Builds the badge frame on an equipment slot button, styled to the active skin.
+local function CreateBadge(btn)
+    local f = CreateFrame("Frame", nil, btn)
+    f:SetSize(BADGE_SIZE, BADGE_SIZE)
+    f:SetPoint("TOPLEFT", btn, "TOPLEFT", 1, -1)
+    f:SetFrameLevel((btn:GetFrameLevel() or 1) + 5)
+
+    local icon = f:CreateTexture(nil, "OVERLAY")
+    f.icon = icon
+
+    if NS.ElvUI_S then
+        -- Exactly how ElvUI skins the equipment slots themselves.
+        f:SetTemplate("Default")
+        icon:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -2)
+        icon:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
+        icon:SetTexCoord(unpack((NS.ElvUI_E and NS.ElvUI_E.TexCoords) or { 0.08, 0.92, 0.08, 0.92 }))
+    else
+        -- Blizzard: a dark recessed mini-slot (stone border + dark fill).
+        f:SetBackdrop({
+            bgFile   = "Interface\\Buttons\\WHITE8X8",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = false, edgeSize = 8,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 },
+        })
+        f:SetBackdropColor(0, 0, 0, 0.85)
+        f:SetBackdropBorderColor(0.45, 0.4, 0.3, 1)
+        icon:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -3)
+        icon:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -3, 3)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+    return f
+end
+
 local function UpdateBadges()
     local model = NS.model
     for i, btnName in pairs(SLOT_BUTTON) do
@@ -413,10 +454,7 @@ local function UpdateBadges()
         if not badge then
             local btn = _G[btnName]
             if btn then
-                badge = btn:CreateTexture(nil, "OVERLAY")
-                badge:SetSize(13, 13)
-                badge:SetPoint("TOPLEFT", btn, "TOPLEFT", 1, -1)
-                badge:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                badge = CreateBadge(btn)
                 badges[i] = badge
             end
         end
@@ -427,14 +465,10 @@ local function UpdateBadges()
             else
                 local cur = CurrentRune(slot)
                 if cur then
-                    badge:SetTexture(ICON_PATH .. cur.icon)
-                    badge:SetDesaturated(false)
-                    badge:SetVertexColor(1, 1, 1)
+                    badge.icon:SetTexture(ICON_PATH .. cur.icon)
+                    badge.icon:Show()
                 else
-                    -- engravable but empty: a greyed rune marker
-                    badge:SetTexture(ICON_PATH .. RUNE_ICON)
-                    badge:SetDesaturated(true)
-                    badge:SetVertexColor(0.6, 0.6, 0.6)
+                    badge.icon:Hide()  -- empty: keep the slot background, no icon
                 end
                 badge:Show()
             end

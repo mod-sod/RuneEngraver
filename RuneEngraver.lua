@@ -130,6 +130,10 @@ local loginFrame = CreateFrame("Frame")
 loginFrame:RegisterEvent("PLAYER_LOGIN")
 loginFrame:SetScript("OnEvent", function()
     RuneEngraver_SavedVars = RuneEngraver_SavedVars or {}
+    -- Skin the panel to ElvUI when it's present (no-op otherwise). ElvUI is
+    -- guaranteed loaded by PLAYER_LOGIN, so detect + apply here.
+    if NS.RE_InitElvUI then NS.RE_InitElvUI() end
+    if NS.RE_ApplyPanelSkin then NS.RE_ApplyPanelSkin() end
     -- Prime the model so the panel has data the first time it opens.
     if NS.RE_RequestState then NS.RE_RequestState() end
 end)
